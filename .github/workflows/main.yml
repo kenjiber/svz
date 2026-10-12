@@ -1,0 +1,88 @@
+name: Build
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # No hace falta un gradlew en el repo: esta accion instala y cachea
+      # Gradle por ti. Si mas adelante generas el wrapper (gradlew/gradlew.bat
+      # + gradle/wrapper/gradle-wrapper.jar), la propia accion lo detecta y
+      # lo usa automaticamente en vez de la version fijada abajo.
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.2.1
+
+      # Busca settings.gradle en el repo. Si no lo encuentra pero hay un
+      # .zip en la raiz (p.ej. subiste el zip del proyecto sin descomprimir),
+      # lo extrae solo y vuelve a buscar antes de rendirse.
+      - name: Detectar (o extraer) la carpeta del proyecto Gradle
+        id: locate
+        run: |
+          find_settings() {
+            find . -maxdepth 4 \( -name settings.gradle -o -name settings.gradle.kts \) -not -path '*/.git/*' -print -quit
+          }
+
+          FOUND=$(find_settings)
+
+          if [ -z "$FOUND" ]; then
+            ZIP=$(find . -maxdepth 2 -iname "*.zip" -not -path '*/.git/*' -print -quit)
+            if [ -n "$ZIP" ]; then
+              echo "No habia settings.gradle, pero encontre $ZIP -> extrayendo..."
+              unzip -q "$ZIP" -d .
+              FOUND=$(find_settings)
+            fi
+          fi
+
+          if [ -z "$FOUND" ]; then
+            echo "::error::No se encontro ningun settings.gradle en el repo (ni suelto ni dentro de un .zip en la raiz)."
+            echo "Contenido del repo para depurar:"
+            find . -maxdepth 3 -not -path '*/.git/*'
+            exit 1
+          fi
+
+          DIR=$(dirname "$FOUND")
+          echo "Proyecto encontrado en: $DIR"
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Compilar con Gradle
+        working-directory: ${{ steps.locate.outputs.dir }}
+        run: gradle build --stacktrace
+
+      - name: Subir el .jar del mod
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thestalker-jar
+          path: '**/build/libs/*.jar'
+          if-no-files-found: warn
+
+      # Si el build falla, esto te deja descargar los reportes de Gradle
+      # (incluye la traza completa de los errores de compilacion) sin
+      # tener que hacer capturas de pantalla del resumen.
+      - name: Subir reportes de build (solo si falla)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-reports
+          path: '**/build/reports'
+          if-no-files-found: ignore
