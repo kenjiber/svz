@@ -23,14 +23,14 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # No hace falta un gradlew en el repo: esta accion instala y cachea
-      # Gradle por ti. Si mas adelante generas el wrapper (gradlew/gradlew.bat
-      # + gradle/wrapper/gradle-wrapper.jar), la propia accion lo detecta y
-      # lo usa automaticamente en vez de la version fijada abajo.
+      # Usamos Gradle 8.12 porque Fabric Loom 1.14.x es mas estable en esa
+      # version. Gradle 9.x puede fallar al resolver los mappings oficiales
+      # de Mojang en runners limpios (que es justo el error que estabamos
+      # viendo justo despues del aviso legal de Mojang).
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 9.2.1
+          gradle-version: 8.12
 
       # Busca settings.gradle en el repo. Si no lo encuentra pero hay un
       # .zip en la raiz (p.ej. subiste el zip del proyecto sin descomprimir),
@@ -64,9 +64,35 @@ jobs:
           echo "Proyecto encontrado en: $DIR"
           echo "dir=$DIR" >> "$GITHUB_OUTPUT"
 
+      # Volcado de diagnostico ANTES del build. Asi, si algo falla en la
+      # fase de configuracion de Gradle (que es donde Loom suele reventar
+      # al descargar mappings), tenemos toda la info en el log.
+      - name: Diagnostico del entorno
+        working-directory: ${{ steps.locate.outputs.dir }}
+        run: |
+          echo "=== JAVA_HOME ==="
+          echo "$JAVA_HOME"
+          echo "=== java -version ==="
+          java -version
+          echo "=== gradle --version ==="
+          gradle --version
+          echo "=== Contenido del proyecto ==="
+          ls -la
+          echo "=== gradle.properties ==="
+          cat gradle.properties 2>/dev/null || echo "(no hay gradle.properties)"
+          echo "=== settings.gradle ==="
+          cat settings.gradle 2>/dev/null || echo "(no hay settings.gradle)"
+          echo "=== build.gradle (primeras 120 lineas) ==="
+          head -n 120 build.gradle 2>/dev/null || echo "(no hay build.gradle)"
+
+      # Compilamos con --stacktrace y --info para ver EXACTAMENTE en que
+      # tarea se atasca y que URL intenta descargar. Guardamos todo el log
+      # en un archivo para poder descargarlo como artifact si falla.
       - name: Compilar con Gradle
         working-directory: ${{ steps.locate.outputs.dir }}
-        run: gradle build --stacktrace
+        run: |
+          set -o pipefail
+          gradle build --stacktrace --info 2>&1 | tee gradle-build.log
 
       - name: Subir el .jar del mod
         if: success()
@@ -76,13 +102,16 @@ jobs:
           path: '**/build/libs/*.jar'
           if-no-files-found: warn
 
-      # Si el build falla, esto te deja descargar los reportes de Gradle
-      # (incluye la traza completa de los errores de compilacion) sin
-      # tener que hacer capturas de pantalla del resumen.
-      - name: Subir reportes de build (solo si falla)
+      # Si el build falla, subimos TODO lo util para depurar: el log completo
+      # de Gradle, los reportes (si se llegaron a generar) y los temporales
+      # de build. Asi no dependes de leer el log en la UI de GitHub.
+      - name: Subir reportes y logs (solo si falla)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: build-reports
-          path: '**/build/reports'
+          path: |
+            **/gradle-build.log
+            **/build/reports/**
+            **/build/tmp/**
           if-no-files-found: ignore
