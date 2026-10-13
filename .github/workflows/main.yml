@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configurar Java 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
@@ -38,7 +38,8 @@ jobs:
           mkdir -p extracted-project
           unzip -oq svz-mobs.zip -d extracted-project
 
-          SETTINGS_FILE="$(find extracted-project -type f \\( -name settings.gradle -o -name settings.gradle.kts \\) -print -quit)"
+          # Búsqueda simplificada para evitar errores de sintaxis con paréntesis
+          SETTINGS_FILE="$(find extracted-project -type f -name 'settings.gradle*' -print -quit)"
           if [ -z "$SETTINGS_FILE" ]; then
             echo "ERROR: El ZIP no contiene settings.gradle ni settings.gradle.kts."
             find extracted-project -maxdepth 4 -type f | sort | head -200
@@ -96,4 +97,3 @@ jobs:
             extracted-project/**/build/*.log
           if-no-files-found: ignore
           retention-days: 7
-          
