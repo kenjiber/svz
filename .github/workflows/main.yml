@@ -75,7 +75,8 @@ jobs:
           set -euo pipefail
           cd "$PROJECT_DIR"
           chmod +x ./gradlew
-          ./gradlew build --no-daemon --stacktrace
+          # AÑADIDO: --no-configuration-cache para evitar errores de deprecación
+          ./gradlew build --no-daemon --stacktrace --no-configuration-cache
 
       - name: Subir JAR compilado
         if: success()
