@@ -1,4 +1,4 @@
-name: Build SVZ-Items
+name: Build SVZ-Mobs
 
 on:
   push:
@@ -15,12 +15,16 @@ env:
   CORE_TAG: V1.0.0
   CORE_JAR: svz-core-1.0.0.jar
 
+  ITEMS_REPO: kenjiber/svz
+  ITEMS_TAG: SVZ-items
+  ITEMS_JAR: svz-items-1.0.0.jar
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Descargar repositorio SVZ-Items
+      - name: Descargar repositorio SVZ-Mobs
         uses: actions/checkout@v4
 
       - name: Configurar JDK 21
@@ -76,7 +80,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           mkdir -p libs
 
           URL="https://github.com/${CORE_REPO}/releases/download/${CORE_TAG}/${CORE_JAR}"
@@ -85,21 +88,45 @@ jobs:
           echo "$URL"
 
           curl --fail --location --silent --show-error \
-            "$URL" \
-            --output "libs/${CORE_JAR}"
+            "$URL" --output "libs/${CORE_JAR}"
 
           if [ ! -s "libs/${CORE_JAR}" ]; then
             echo "::error::El JAR de SVZ-Core está vacío o no se descargó."
             exit 1
           fi
 
-          echo "JAR descargado correctamente:"
+          echo "SVZ-Core descargado correctamente:"
           ls -lh "libs/${CORE_JAR}"
 
-      - name: Diagnóstico del entorno
+      - name: Descargar SVZ-Items desde GitHub Releases
         working-directory: ${{ steps.locate.outputs.dir }}
         shell: bash
         run: |
+          set -euo pipefail
+          mkdir -p libs
+
+          URL="https://github.com/${ITEMS_REPO}/releases/download/${ITEMS_TAG}/${ITEMS_JAR}"
+
+          echo "Descargando SVZ-Items desde:"
+          echo "$URL"
+
+          curl --fail --location --silent --show-error \
+            "$URL" --output "libs/${ITEMS_JAR}"
+
+          if [ ! -s "libs/${ITEMS_JAR}" ]; then
+            echo "::error::El JAR de SVZ-Items está vacío o no se descargó."
+            exit 1
+          fi
+
+          echo "SVZ-Items descargado correctamente:"
+          ls -lh "libs/${ITEMS_JAR}"
+
+      - name: Diagnóstico del entorno y dependencias
+        working-directory: ${{ steps.locate.outputs.dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
           echo "=== Java ==="
           java -version
 
@@ -109,14 +136,17 @@ jobs:
           echo "=== Archivos del proyecto ==="
           ls -la
 
-          echo "=== Dependencia de SVZ-Core ==="
-          grep -n -E 'svz-core|svzcore|libs' \
+          echo "=== Dependencias declaradas ==="
+          grep -n -E 'svz-core|svz-items|svzcore|libs' \
             build.gradle build.gradle.kts 2>/dev/null || true
 
-          echo "=== JAR de SVZ-Core ==="
+          echo "=== JAR descargados ==="
           ls -lh libs/
 
-      - name: Compilar SVZ-Items
+          test -s "libs/${CORE_JAR}"
+          test -s "libs/${ITEMS_JAR}"
+
+      - name: Compilar SVZ-Mobs
         working-directory: ${{ steps.locate.outputs.dir }}
         shell: bash
         run: |
@@ -124,21 +154,21 @@ jobs:
           gradle build --no-daemon --stacktrace --info 2>&1 \
             | tee gradle-build.log
 
-      - name: Subir JAR de SVZ-Items
+      - name: Subir JAR de SVZ-Mobs
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-items-jar
+          name: svz-mobs-jar
           path: |
-            **/build/libs/*.jar
-            !**/build/libs/*-sources.jar
+            ${{ steps.locate.outputs.dir }}/build/libs/*.jar
+            !${{ steps.locate.outputs.dir }}/build/libs/*-sources.jar
           if-no-files-found: error
 
       - name: Subir reportes y logs si falla
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-items-build-reports
+          name: svz-mobs-build-reports
           path: |
             **/gradle-build.log
             **/build/reports/**
