@@ -1,10 +1,10 @@
-name: Build SVZ-Mobs
+name: Build SVZ-TelarRoto
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - "svz-mobs.zip"
+      - "svz-telarroto.zip"
       - ".github/workflows/**"
 
 permissions:
@@ -28,14 +28,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f "svz-mobs.zip" ]; then
-            echo "ERROR: No existe svz-mobs.zip en la raíz del repositorio."
+          if [ ! -f "svz-telarroto.zip" ]; then
+            echo "ERROR: No existe svz-telarroto.zip en la raíz del repositorio."
             ls -la
             exit 1
           fi
 
           mkdir -p extracted-project
-          unzip -oq svz-mobs.zip -d extracted-project
+          unzip -oq svz-telarroto.zip -d extracted-project
 
           SETTINGS_FILE="$(find extracted-project -type f -name 'settings.gradle*' -print -quit)"
           if [ -z "$SETTINGS_FILE" ]; then
@@ -49,36 +49,46 @@ jobs:
           echo "Proyecto detectado en: $PROJECT_DIR"
           ls -la "$PROJECT_DIR"
 
-      - name: Descargar dependencias SVZ-Core y SVZ-Items
+      - name: Descargar dependencias SVZ-Core, SVZ-Items y SVZ-Mobs
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$PROJECT_DIR/libs"
+
+          # SVZ-Core
           curl --fail --location --retry 3 \
             "https://github.com/kenjiber/svz/releases/download/V1.0.0/svz-core-1.0.0.jar" \
             -o "$PROJECT_DIR/libs/svz-core-1.0.0.jar"
+
+          # SVZ-Items
           curl --fail --location --retry 3 \
             "https://github.com/kenjiber/svz/releases/download/SVZ-items/svz-items-1.0.0.jar" \
             -o "$PROJECT_DIR/libs/svz-items-1.0.0.jar"
+
+          # SVZ-Mobs (nuevo, desde el release que acabas de crear)
+          curl --fail --location --retry 3 \
+            "https://github.com/kenjiber/svz/releases/download/SVZ-mobs/svz-mobs-1.0.0.jar" \
+            -o "$PROJECT_DIR/libs/svz-mobs-1.0.0.jar"
+
+          # Verificar que los 3 jars se descargaron correctamente
           test -s "$PROJECT_DIR/libs/svz-core-1.0.0.jar"
           test -s "$PROJECT_DIR/libs/svz-items-1.0.0.jar"
+          test -s "$PROJECT_DIR/libs/svz-mobs-1.0.0.jar"
           file "$PROJECT_DIR/libs/"*.jar
 
-      - name: Compilar SVZ-Mobs
+      - name: Compilar SVZ-TelarRoto
         shell: bash
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-          # ⚠️ CLAVE: dar permisos ANTES de usar el wrapper
           chmod +x ./gradlew
-          ./gradlew wrapper --gradle-version 9.2.0
           ./gradlew build --no-daemon --stacktrace --no-configuration-cache
 
       - name: Subir JAR compilado
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-mobs-jar
+          name: svz-telarroto-jar
           path: ${{ env.PROJECT_DIR }}/build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
@@ -87,7 +97,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-mobs-build-logs
+          name: svz-telarroto-build-logs
           path: |
             extracted-project/**/build/reports/**
             extracted-project/**/build/*.log
