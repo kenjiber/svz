@@ -30,7 +30,6 @@ jobs:
           set -euo pipefail
           if [ ! -f "svz-mobs.zip" ]; then
             echo "ERROR: No existe svz-mobs.zip en la raíz del repositorio."
-            echo "Archivos disponibles:"
             ls -la
             exit 1
           fi
@@ -38,7 +37,7 @@ jobs:
           mkdir -p extracted-project
           unzip -oq svz-mobs.zip -d extracted-project
 
-          # Búsqueda simplificada para evitar errores de sintaxis con paréntesis
+          # Búsqueda simplificada para evitar errores de sintaxis
           SETTINGS_FILE="$(find extracted-project -type f -name 'settings.gradle*' -print -quit)"
           if [ -z "$SETTINGS_FILE" ]; then
             echo "ERROR: El ZIP no contiene settings.gradle ni settings.gradle.kts."
@@ -56,15 +55,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$PROJECT_DIR/libs"
-
           curl --fail --location --retry 3 \
             "https://github.com/kenjiber/svz/releases/download/V1.0.0/svz-core-1.0.0.jar" \
             -o "$PROJECT_DIR/libs/svz-core-1.0.0.jar"
-
           curl --fail --location --retry 3 \
             "https://github.com/kenjiber/svz/releases/download/SVZ-items/svz-items-1.0.0.jar" \
             -o "$PROJECT_DIR/libs/svz-items-1.0.0.jar"
-
           test -s "$PROJECT_DIR/libs/svz-core-1.0.0.jar"
           test -s "$PROJECT_DIR/libs/svz-items-1.0.0.jar"
           file "$PROJECT_DIR/libs/"*.jar
@@ -74,8 +70,11 @@ jobs:
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
+          # Asegurar que el wrapper use Gradle 9
+          ./gradlew wrapper --gradle-version 9.2.0
           chmod +x ./gradlew
-          # AÑADIDO: --no-configuration-cache para evitar errores de deprecación
+          # El flag --no-configuration-cache ya no es necesario si se desactiva en gradle.properties,
+          # pero se mantiene por seguridad.
           ./gradlew build --no-daemon --stacktrace --no-configuration-cache
 
       - name: Subir JAR compilado
@@ -83,8 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: svz-mobs-jar
-          path: |
-            ${{ env.PROJECT_DIR }}/build/libs/*.jar
+          path: ${{ env.PROJECT_DIR }}/build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
 
