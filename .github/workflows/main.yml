@@ -37,7 +37,6 @@ jobs:
           mkdir -p extracted-project
           unzip -oq svz-mobs.zip -d extracted-project
 
-          # Búsqueda simplificada para evitar errores de sintaxis
           SETTINGS_FILE="$(find extracted-project -type f -name 'settings.gradle*' -print -quit)"
           if [ -z "$SETTINGS_FILE" ]; then
             echo "ERROR: El ZIP no contiene settings.gradle ni settings.gradle.kts."
@@ -70,11 +69,9 @@ jobs:
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-          # Asegurar que el wrapper use Gradle 9
-          ./gradlew wrapper --gradle-version 9.2.0
+          # ⚠️ CLAVE: dar permisos ANTES de usar el wrapper
           chmod +x ./gradlew
-          # El flag --no-configuration-cache ya no es necesario si se desactiva en gradle.properties,
-          # pero se mantiene por seguridad.
+          ./gradlew wrapper --gradle-version 9.2.0
           ./gradlew build --no-daemon --stacktrace --no-configuration-cache
 
       - name: Subir JAR compilado
