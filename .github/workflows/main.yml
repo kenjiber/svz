@@ -1,10 +1,10 @@
-name: Build SVZ-TelarRoto
+name: Build SVZ-Clases
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - "svz-telarroto.zip"
+      - "svz-clases.zip"
       - ".github/workflows/**"
 
 permissions:
@@ -28,14 +28,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f "svz-telarroto.zip" ]; then
-            echo "ERROR: No existe svz-telarroto.zip en la raíz del repositorio."
+          if [ ! -f "svz-clases.zip" ]; then
+            echo "ERROR: No existe svz-clases.zip en la raíz del repositorio."
             ls -la
             exit 1
           fi
 
           mkdir -p extracted-project
-          unzip -oq svz-telarroto.zip -d extracted-project
+          unzip -oq svz-clases.zip -d extracted-project
 
           SETTINGS_FILE="$(find extracted-project -type f -name 'settings.gradle*' -print -quit)"
           if [ -z "$SETTINGS_FILE" ]; then
@@ -49,7 +49,7 @@ jobs:
           echo "Proyecto detectado en: $PROJECT_DIR"
           ls -la "$PROJECT_DIR"
 
-      - name: Descargar dependencias SVZ-Core, SVZ-Items y SVZ-Mobs
+      - name: Descargar dependencias SVZ-Core y SVZ-Items
         shell: bash
         run: |
           set -euo pipefail
@@ -65,18 +65,12 @@ jobs:
             "https://github.com/kenjiber/svz/releases/download/SVZ-items/svz-items-1.0.0.jar" \
             -o "$PROJECT_DIR/libs/svz-items-1.0.0.jar"
 
-          # SVZ-Mobs (nuevo, desde el release que acabas de crear)
-          curl --fail --location --retry 3 \
-            "https://github.com/kenjiber/svz/releases/download/SVZ-mobs/svz-mobs-1.0.0.jar" \
-            -o "$PROJECT_DIR/libs/svz-mobs-1.0.0.jar"
-
-          # Verificar que los 3 jars se descargaron correctamente
+          # Verificar que los 2 jars se descargaron
           test -s "$PROJECT_DIR/libs/svz-core-1.0.0.jar"
           test -s "$PROJECT_DIR/libs/svz-items-1.0.0.jar"
-          test -s "$PROJECT_DIR/libs/svz-mobs-1.0.0.jar"
           file "$PROJECT_DIR/libs/"*.jar
 
-      - name: Compilar SVZ-TelarRoto
+      - name: Compilar SVZ-Clases
         shell: bash
         run: |
           set -euo pipefail
@@ -88,7 +82,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-telarroto-jar
+          name: svz-clases-jar
           path: ${{ env.PROJECT_DIR }}/build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
@@ -97,7 +91,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-telarroto-build-logs
+          name: svz-clases-build-logs
           path: |
             extracted-project/**/build/reports/**
             extracted-project/**/build/*.log
