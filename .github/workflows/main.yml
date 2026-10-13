@@ -1,4 +1,4 @@
-name: Build
+name: Build SVZ-Items
 
 on:
   push:
@@ -10,12 +10,17 @@ on:
 permissions:
   contents: read
 
+env:
+  CORE_REPO: kenjiber/svz
+  CORE_TAG: V1.0.0
+  CORE_JAR: svz-core-1.0.0.jar
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repositorio
+      - name: Descargar repositorio SVZ-Items
         uses: actions/checkout@v4
 
       - name: Configurar JDK 21
@@ -24,7 +29,6 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      # Loom 1.14.10 requiere Gradle 9.2.0 o superior.
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -51,7 +55,7 @@ jobs:
               -not -path '*/.git/*' -print -quit)"
 
             if [ -n "$ZIP" ]; then
-              echo "No se encontró settings.gradle. Extrayendo $ZIP..."
+              echo "Extrayendo proyecto: $ZIP"
               unzip -q "$ZIP" -d .
               FOUND="$(find_settings)"
             fi
@@ -64,14 +68,33 @@ jobs:
           fi
 
           DIR="$(dirname "$FOUND")"
-          DIR="${DIR#./}"
-
-          if [ "$DIR" = "." ]; then
-            DIR="."
-          fi
-
           echo "Proyecto encontrado: $DIR"
           echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Descargar SVZ-Core desde GitHub Releases
+        working-directory: ${{ steps.locate.outputs.dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p libs
+
+          URL="https://github.com/${CORE_REPO}/releases/download/${CORE_TAG}/${CORE_JAR}"
+
+          echo "Descargando SVZ-Core desde:"
+          echo "$URL"
+
+          curl --fail --location --silent --show-error \
+            "$URL" \
+            --output "libs/${CORE_JAR}"
+
+          if [ ! -s "libs/${CORE_JAR}" ]; then
+            echo "::error::El JAR de SVZ-Core está vacío o no se descargó."
+            exit 1
+          fi
+
+          echo "JAR descargado correctamente:"
+          ls -lh "libs/${CORE_JAR}"
 
       - name: Diagnóstico del entorno
         working-directory: ${{ steps.locate.outputs.dir }}
@@ -86,25 +109,14 @@ jobs:
           echo "=== Archivos del proyecto ==="
           ls -la
 
-          echo "=== gradle.properties ==="
-          cat gradle.properties 2>/dev/null || true
+          echo "=== Dependencia de SVZ-Core ==="
+          grep -n -E 'svz-core|svzcore|libs' \
+            build.gradle build.gradle.kts 2>/dev/null || true
 
-          echo "=== settings.gradle ==="
-          cat settings.gradle 2>/dev/null || \
-            cat settings.gradle.kts 2>/dev/null || true
+          echo "=== JAR de SVZ-Core ==="
+          ls -lh libs/
 
-          echo "=== build.gradle ==="
-          cat build.gradle 2>/dev/null || \
-            cat build.gradle.kts 2>/dev/null || true
-
-          echo "=== Wrapper, si existe ==="
-          if [ -f gradle/wrapper/gradle-wrapper.properties ]; then
-            cat gradle/wrapper/gradle-wrapper.properties
-          else
-            echo "No hay Gradle Wrapper."
-          fi
-
-      - name: Compilar con Gradle
+      - name: Compilar SVZ-Items
         working-directory: ${{ steps.locate.outputs.dir }}
         shell: bash
         run: |
@@ -112,11 +124,11 @@ jobs:
           gradle build --no-daemon --stacktrace --info 2>&1 \
             | tee gradle-build.log
 
-      - name: Subir JAR del mod
+      - name: Subir JAR de SVZ-Items
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: thestalker-jar
+          name: svz-items-jar
           path: |
             **/build/libs/*.jar
             !**/build/libs/*-sources.jar
@@ -126,7 +138,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-reports
+          name: svz-items-build-reports
           path: |
             **/gradle-build.log
             **/build/reports/**
