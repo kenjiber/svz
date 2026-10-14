@@ -1,10 +1,10 @@
-name: Build SVZ-Posecion
+name: Build SVZ-TelarRoto
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - "svz-posesion.zip"
+      - "svz-telarroto.zip"
       - ".github/workflows/**"
 
 permissions:
@@ -33,14 +33,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f "svz-posesion.zip" ]; then
-            echo "ERROR: No existe svz-posesion.zip en la raíz del repositorio."
+          if [ ! -f "svz-telarroto.zip" ]; then
+            echo "ERROR: No existe svz-telarroto.zip en la raíz del repositorio."
             ls -la
             exit 1
           fi
 
           mkdir -p extracted-project
-          unzip -oq svz-posesion.zip -d extracted-project
+          unzip -oq svz-telarroto.zip -d extracted-project
 
           SETTINGS_FILE="$(find extracted-project -type f -name 'settings.gradle*' -print -quit)"
           if [ -z "$SETTINGS_FILE" ]; then
@@ -80,7 +80,7 @@ jobs:
           test -s "$PROJECT_DIR/libs/svz-mobs-1.0.0.jar"
           file "$PROJECT_DIR/libs/"*.jar
 
-      - name: Compilar SVZ-Posecion
+      - name: Compilar SVZ-TelarRoto
         shell: bash
         run: |
           set -euo pipefail
@@ -98,7 +98,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-posesion-jar
+          name: svz-telarroto-jar
           path: ${{ env.PROJECT_DIR }}/build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
@@ -107,7 +107,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-posesion-build-logs
+          name: svz-telarroto-build-logs
           path: |
             extracted-project/**/build/reports/**
             extracted-project/**/build/*.log
