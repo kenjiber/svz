@@ -1,10 +1,10 @@
-name: Build SVZ-Clases
+name: Build SVZ-Core
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - "svz-clases.zip"
+      - "svz-core.zip"
       - ".github/workflows/**"
 
 permissions:
@@ -28,14 +28,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f "svz-clases.zip" ]; then
-            echo "ERROR: No existe svz-clases.zip en la raíz del repositorio."
+          if [ ! -f "svz-core.zip" ]; then
+            echo "ERROR: No existe svz-core.zip en la raíz del repositorio."
             ls -la
             exit 1
           fi
 
           mkdir -p extracted-project
-          unzip -oq svz-clases.zip -d extracted-project
+          unzip -oq svz-core.zip -d extracted-project
 
           SETTINGS_FILE="$(find extracted-project -type f -name 'settings.gradle*' -print -quit)"
           if [ -z "$SETTINGS_FILE" ]; then
@@ -49,28 +49,7 @@ jobs:
           echo "Proyecto detectado en: $PROJECT_DIR"
           ls -la "$PROJECT_DIR"
 
-      - name: Descargar dependencias SVZ-Core y SVZ-Items
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$PROJECT_DIR/libs"
-
-          # SVZ-Core
-          curl --fail --location --retry 3 \
-            "https://github.com/kenjiber/svz/releases/download/V1.0.0/svz-core-1.0.0.jar" \
-            -o "$PROJECT_DIR/libs/svz-core-1.0.0.jar"
-
-          # SVZ-Items
-          curl --fail --location --retry 3 \
-            "https://github.com/kenjiber/svz/releases/download/SVZ-items/svz-items-1.0.0.jar" \
-            -o "$PROJECT_DIR/libs/svz-items-1.0.0.jar"
-
-          # Verificar que los 2 jars se descargaron
-          test -s "$PROJECT_DIR/libs/svz-core-1.0.0.jar"
-          test -s "$PROJECT_DIR/libs/svz-items-1.0.0.jar"
-          file "$PROJECT_DIR/libs/"*.jar
-
-      - name: Compilar SVZ-Clases
+      - name: Compilar SVZ-Core
         shell: bash
         run: |
           set -euo pipefail
@@ -82,7 +61,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-clases-jar
+          name: svz-core-jar
           path: ${{ env.PROJECT_DIR }}/build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
@@ -91,7 +70,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-clases-build-logs
+          name: svz-core-build-logs
           path: |
             extracted-project/**/build/reports/**
             extracted-project/**/build/*.log
