@@ -24,6 +24,11 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.2.0
+
       - name: Verificar y extraer el proyecto
         shell: bash
         run: |
@@ -54,6 +59,13 @@ jobs:
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
+
+          # ✅ NUEVO: si no existe el wrapper, generarlo
+          if [ ! -f "./gradlew" ]; then
+            echo "=== No hay gradlew. Generando wrapper de Gradle 9.2.0 ==="
+            gradle wrapper --gradle-version 9.2.0
+          fi
+
           chmod +x ./gradlew
           ./gradlew build --no-daemon --stacktrace --no-configuration-cache
 
