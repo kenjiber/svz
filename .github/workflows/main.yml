@@ -1,10 +1,10 @@
-name: Build SVZ-Core
+name: Build SVZ-Items
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - "svz-core.zip"
+      - "svz-items.zip"
       - ".github/workflows/**"
 
 permissions:
@@ -33,14 +33,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f "svz-core.zip" ]; then
-            echo "ERROR: No existe svz-core.zip en la raíz del repositorio."
+          if [ ! -f "svz-items.zip" ]; then
+            echo "ERROR: No existe svz-items.zip en la raíz del repositorio."
             ls -la
             exit 1
           fi
 
           mkdir -p extracted-project
-          unzip -oq svz-core.zip -d extracted-project
+          unzip -oq svz-items.zip -d extracted-project
 
           SETTINGS_FILE="$(find extracted-project -type f -name 'settings.gradle*' -print -quit)"
           if [ -z "$SETTINGS_FILE" ]; then
@@ -54,13 +54,26 @@ jobs:
           echo "Proyecto detectado en: $PROJECT_DIR"
           ls -la "$PROJECT_DIR"
 
-      - name: Compilar SVZ-Core
+      - name: Descargar dependencia SVZ-Core
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$PROJECT_DIR/libs"
+
+          curl --fail --location --retry 3 \
+            "https://github.com/kenjiber/svz/releases/download/V1.0.0/svz-core-1.0.0.jar" \
+            -o "$PROJECT_DIR/libs/svz-core-1.0.0.jar"
+
+          test -s "$PROJECT_DIR/libs/svz-core-1.0.0.jar"
+          file "$PROJECT_DIR/libs/"*.jar
+
+      - name: Compilar SVZ-Items
         shell: bash
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
 
-          # ✅ NUEVO: si no existe el wrapper, generarlo
+          # Si no existe el wrapper, generarlo
           if [ ! -f "./gradlew" ]; then
             echo "=== No hay gradlew. Generando wrapper de Gradle 9.2.0 ==="
             gradle wrapper --gradle-version 9.2.0
@@ -73,7 +86,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-core-jar
+          name: svz-items-jar
           path: ${{ env.PROJECT_DIR }}/build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
@@ -82,7 +95,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: svz-core-build-logs
+          name: svz-items-build-logs
           path: |
             extracted-project/**/build/reports/**
             extracted-project/**/build/*.log
